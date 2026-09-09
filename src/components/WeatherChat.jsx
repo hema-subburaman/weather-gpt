@@ -2,989 +2,885 @@ import { useState } from "react";
 import "../App.css";
 
 /* =========================================================
-   RISK LEVEL
+   WEATHER RISK ENGINE
 ========================================================= */
 
-function getRiskLevel(weather) {
-  const temp = weather.main.temp;
-  const humidity = weather.main.humidity;
-  const wind = weather.wind.speed;
-  const condition = weather.weather[0].main;
+const getRiskLevel = (weather) => {
+  if (!weather) return "low";
+
+  const temp = weather.main?.temp ?? 0;
+  const humidity = weather.main?.humidity ?? 0;
+  const wind = weather.wind?.speed ?? 0;
+  const condition = weather.weather?.[0]?.main?.toLowerCase() ?? "";
 
   if (
-    condition === "Thunderstorm" ||
+    condition.includes("thunderstorm") ||
     temp >= 35 ||
     wind >= 10 ||
     humidity >= 85
   ) {
-    return "High";
+    return "high";
   }
 
   if (
-    condition === "Rain" ||
-    condition === "Drizzle" ||
+    condition.includes("rain") ||
+    condition.includes("drizzle") ||
     temp >= 30 ||
     humidity >= 70 ||
     wind >= 6
   ) {
-    return "Medium";
+    return "medium";
   }
 
-  return "Low";
-}
+  return "low";
+};
+
+/* =========================================================
+   COMMON WEATHER FACTORS
+========================================================= */
+
+const getWeatherFactors = (weather) => {
+  if (!weather) return [];
+
+  return [
+    {
+      label: "Temperature",
+      value: `${weather.main?.temp?.toFixed(1) ?? "--"}°C`,
+    },
+    {
+      label: "Feels Like",
+      value: `${weather.main?.feels_like?.toFixed(1) ?? "--"}°C`,
+    },
+    {
+      label: "Humidity",
+      value: `${weather.main?.humidity ?? "--"}%`,
+    },
+    {
+      label: "Wind",
+      value: `${weather.wind?.speed?.toFixed(1) ?? "--"} m/s`,
+    },
+    {
+      label: "Condition",
+      value: weather.weather?.[0]?.description ?? "Unknown",
+    },
+    {
+      label: "Visibility",
+      value: `${((weather.visibility ?? 0) / 1000).toFixed(1)} km`,
+    },
+  ];
+};
+
+/* =========================================================
+   CHAT ANALYSIS
+========================================================= */
+
+const analyzeQuestion = (question, weather) => {
+  const text = question.toLowerCase().trim();
+
+  const temp = weather.main?.temp ?? 0;
+  const feelsLike = weather.main?.feels_like ?? temp;
+  const humidity = weather.main?.humidity ?? 0;
+  const wind = weather.wind?.speed ?? 0;
+  const visibility = (weather.visibility ?? 0) / 1000;
+
+  const condition = weather.weather?.[0]?.main ?? "";
+  const description = weather.weather?.[0]?.description ?? condition;
+
+  let risk = getRiskLevel(weather);
+  let answer = "";
+  let recommendation = "";
+
+  /* Umbrella / Rain */
+  if (
+    text.includes("umbrella") ||
+    text.includes("rain") ||
+    text.includes("raining")
+  ) {
+    if (
+      condition.toLowerCase().includes("rain") ||
+      condition.toLowerCase().includes("drizzle") ||
+      condition.toLowerCase().includes("thunderstorm")
+    ) {
+      risk = "medium";
+      answer = `Yes, carrying an umbrella is recommended because the current weather condition is ${description}.`;
+      recommendation = "Carry an umbrella and be prepared for wet conditions.";
+    } else {
+      risk = "low";
+      answer = `Rain is not currently indicated. The current weather condition is ${description}.`;
+      recommendation =
+        "An umbrella is not necessary based on the current observed condition.";
+    }
+  } else if (
+
+  /* Hot / Temperature */
+    text.includes("hot") ||
+    text.includes("temperature") ||
+    text.includes("heat") ||
+    text.includes("cold")
+  ) {
+    if (temp >= 35 || feelsLike >= 40) {
+      risk = "high";
+      answer = `It is very hot right now. The temperature is ${temp.toFixed(
+        1,
+      )}°C and it feels like ${feelsLike.toFixed(1)}°C.`;
+      recommendation =
+        "Avoid prolonged heat exposure, stay hydrated, and take breaks in a cool place.";
+    } else if (temp >= 30 || feelsLike >= 35) {
+      risk = "medium";
+      answer = `The weather is quite warm. The temperature is ${temp.toFixed(
+        1,
+      )}°C and it feels like ${feelsLike.toFixed(1)}°C.`;
+      recommendation = "Limit prolonged exposure to heat and stay hydrated.";
+    } else if (temp <= 18) {
+      risk = "medium";
+      answer = `It is relatively cool outside. The temperature is ${temp.toFixed(
+        1,
+      )}°C.`;
+      recommendation =
+        "Consider wearing suitable clothing for the cooler conditions.";
+    } else {
+      risk = "low";
+      answer = `The current temperature is ${temp.toFixed(
+        1,
+      )}°C and it feels like ${feelsLike.toFixed(1)}°C.`;
+      recommendation = "The temperature is generally comfortable.";
+    }
+  } else if (
+
+  /* Running / Exercise */
+    text.includes("run") ||
+    text.includes("running") ||
+    text.includes("exercise") ||
+    text.includes("workout")
+  ) {
+    if (risk === "high") {
+      answer =
+        "Running or intense exercise is not recommended right now because the current weather conditions may increase outdoor activity risk.";
+      recommendation =
+        "Consider postponing intense exercise or moving it indoors.";
+    } else if (risk === "medium") {
+      answer = `Running is possible with caution. The temperature is ${temp.toFixed(
+        1,
+      )}°C, feels like ${feelsLike.toFixed(
+        1,
+      )}°C, and humidity is ${humidity}%.`;
+      recommendation =
+        "Keep the run moderate, stay hydrated, and take breaks if needed.";
+    } else {
+      answer =
+        "The current conditions are generally suitable for running or light exercise.";
+      recommendation =
+        "A normal workout should be reasonable under the current conditions.";
+    }
+  } else if (
+
+  /* Outdoor activity */
+    text.includes("outdoor") ||
+    text.includes("outside") ||
+    text.includes("activity")
+  ) {
+    if (risk === "high") {
+      answer =
+        "Outdoor activity is not advisable under the current conditions because one or more weather factors indicate high risk.";
+      recommendation =
+        "Avoid prolonged outdoor exposure and consider postponing the activity.";
+    } else if (risk === "medium") {
+      answer = `Outdoor activity may require some caution because the temperature is ${temp.toFixed(
+        1,
+      )}°C, feels like ${feelsLike.toFixed(
+        1,
+      )}°C, and humidity is ${humidity}%.`;
+      recommendation =
+        "Consider keeping the activity shorter and adjust the intensity according to the conditions.";
+    } else {
+      answer =
+        "The current weather conditions are generally suitable for outdoor activity.";
+      recommendation =
+        "Normal outdoor activity should be reasonable while staying aware of changing conditions.";
+    }
+  } else if (text.includes("wind") || text.includes("windy")) {
+
+  /* Wind */
+    if (wind >= 10) {
+      risk = "high";
+      answer = `The wind is strong right now at ${wind.toFixed(1)} m/s.`;
+      recommendation = "Avoid activities that may be affected by strong winds.";
+    } else if (wind >= 6) {
+      risk = "medium";
+      answer = `The wind is moderately strong at ${wind.toFixed(1)} m/s.`;
+      recommendation =
+        "Use caution for outdoor activities that are sensitive to wind.";
+    } else {
+      risk = "low";
+      answer = `The wind is relatively light at ${wind.toFixed(1)} m/s.`;
+      recommendation = "Wind conditions are generally manageable.";
+    }
+  } else if (text.includes("humidity")) {
+
+  /* Humidity */
+    if (humidity >= 80) {
+      risk = "medium";
+      answer = `Humidity is high at ${humidity}%, which can make the weather feel more uncomfortable.`;
+      recommendation =
+        "Stay hydrated and take breaks during prolonged outdoor activity.";
+    } else if (humidity >= 60) {
+      risk = "low";
+      answer = `Humidity is ${humidity}%, which is moderately humid.`;
+      recommendation = "Normal activity is reasonable while staying hydrated.";
+    } else {
+      risk = "low";
+      answer = `Humidity is relatively low at ${humidity}%.`;
+      recommendation = "Current humidity conditions are generally comfortable.";
+    }
+  } else if (
+
+  /* Visibility */
+    text.includes("visibility") ||
+    text.includes("clear") ||
+    text.includes("see")
+  ) {
+    if (visibility < 2) {
+      risk = "high";
+      answer = `Visibility is low at ${visibility.toFixed(
+        1,
+      )} km, which can make travel and outdoor activities more difficult.`;
+      recommendation =
+        "Use extra caution while travelling and avoid unnecessary outdoor exposure.";
+    } else if (visibility < 5) {
+      risk = "medium";
+      answer = `Visibility is ${visibility.toFixed(
+        1,
+      )} km, so some caution may be needed.`;
+      recommendation = "Be cautious during travel and outdoor activities.";
+    } else {
+      risk = "low";
+      answer = `Visibility is good at ${visibility.toFixed(1)} km.`;
+      recommendation = "Visibility conditions are generally favourable.";
+    }
+  } else {
+
+  /* Generic weather */
+    answer = `The current weather in ${
+      weather.name
+    } is ${description}. The temperature is ${temp.toFixed(
+      1,
+    )}°C and it feels like ${feelsLike.toFixed(1)}°C.`;
+
+    recommendation =
+      "Ask about outdoor activity, running, rain, umbrella, temperature, wind, humidity, or visibility for a more specific assessment.";
+  }
+
+  return {
+    type: "chat",
+    risk,
+    answer,
+    recommendation,
+    factors: getWeatherFactors(weather),
+    source: "OpenWeather API",
+  };
+};
 
 /* =========================================================
    WHAT-IF ANALYSIS
 ========================================================= */
 
-function analyzeWhatIf(weather) {
-  const temp = weather.main.temp;
-  const humidity = weather.main.humidity;
-  const wind = weather.wind.speed;
-  const condition = weather.weather[0].main;
-  const description = weather.weather[0].description;
+const analyzeWhatIf = (activity, weather) => {
+  const temp = weather.main?.temp ?? 0;
+  const feelsLike = weather.main?.feels_like ?? temp;
+  const humidity = weather.main?.humidity ?? 0;
+  const wind = weather.wind?.speed ?? 0;
 
-  let risk = "Low";
+  const condition = weather.weather?.[0]?.main?.toLowerCase() ?? "";
+  const description = weather.weather?.[0]?.description ?? condition;
+
+  let risk = "low";
   const reasons = [];
 
-  if (temp >= 35) {
-    risk = "High";
-    reasons.push(`high temperature (${temp.toFixed(1)}°C)`);
+  if (condition.includes("thunderstorm") || condition.includes("rain")) {
+    risk = "high";
+    reasons.push(`Current condition is ${description}.`);
+  }
+
+  if (temp >= 35 || feelsLike >= 40) {
+    risk = "high";
+    reasons.push(
+      `High heat: ${temp.toFixed(1)}°C, feels like ${feelsLike.toFixed(1)}°C.`,
+    );
   } else if (temp >= 30) {
-    risk = "Medium";
-    reasons.push(`warm temperature (${temp.toFixed(1)}°C)`);
+    if (risk !== "high") risk = "medium";
+    reasons.push(`Warm temperature: ${temp.toFixed(1)}°C.`);
   }
 
   if (humidity >= 80) {
-    risk = "High";
-    reasons.push(`high humidity (${humidity}%)`);
-  } else if (humidity >= 70) {
-    if (risk === "Low") {
-      risk = "Medium";
-    }
-    reasons.push(`high humidity (${humidity}%)`);
+    if (risk !== "high") risk = "medium";
+    reasons.push(`High humidity: ${humidity}%.`);
   }
 
   if (wind >= 10) {
-    risk = "High";
-    reasons.push(`strong wind (${wind.toFixed(1)} m/s)`);
+    risk = "high";
+    reasons.push(`Strong wind: ${wind.toFixed(1)} m/s.`);
   } else if (wind >= 6) {
-    if (risk === "Low") {
-      risk = "Medium";
-    }
-    reasons.push(`moderate-to-strong wind (${wind.toFixed(1)} m/s)`);
+    if (risk !== "high") risk = "medium";
+    reasons.push(`Moderate wind: ${wind.toFixed(1)} m/s.`);
   }
 
-  if (
-    condition === "Rain" ||
-    condition === "Drizzle" ||
-    condition === "Thunderstorm"
-  ) {
-    risk = "High";
-    reasons.push(`current condition is ${description}`);
+  if (reasons.length === 0) {
+    reasons.push("Current weather factors are generally favourable.");
   }
 
-  let recommendation;
-
-  if (risk === "High") {
-    recommendation =
-      "It is better to postpone this activity or choose a safer alternative.";
-  } else if (risk === "Medium") {
-    recommendation =
-      "The activity is possible, but reduce duration or intensity and take suitable precautions.";
-  } else {
-    recommendation =
-      "The current weather conditions are generally suitable for this activity.";
-  }
-
-  return {
-    risk,
-    reasons,
-    recommendation,
-  };
-}
-
-/* =========================================================
-   CURRENT WEATHER QUESTION ANALYSIS
-========================================================= */
-
-function analyzeQuestion(question, weather) {
-  const q = question.toLowerCase().trim();
-
-  const temp = weather.main.temp;
-  const feelsLike = weather.main.feels_like;
-  const humidity = weather.main.humidity;
-  const wind = weather.wind.speed;
-  const visibility = weather.visibility ? weather.visibility / 1000 : null;
-
-  const condition = weather.weather[0].main;
-  const description = weather.weather[0].description;
-
-  let response = "";
+  let answer = "";
   let recommendation = "";
 
-  /* =======================================================
-     1. RAIN / UMBRELLA
-     Must come before generic weather conditions.
-  ======================================================= */
+  if (risk === "high") {
+    answer = `Doing ${
+      activity || "this activity"
+    } right now may involve higher weather-related risk based on the current conditions.`;
 
-  const isRainQuestion =
-    q.includes("umbrella") ||
-    q.includes("rain") ||
-    q.includes("raining") ||
-    q.includes("rainy");
+    recommendation = `Avoid or postpone ${
+      activity || "the activity"
+    } if possible because the current conditions indicate higher weather-related risk.`;
+  } else if (risk === "medium") {
+    answer = `Doing ${
+      activity || "this activity"
+    } is possible, but the current weather conditions suggest that some caution is needed.`;
 
-  if (isRainQuestion) {
-    const isRaining =
-      condition === "Rain" ||
-      condition === "Drizzle" ||
-      condition === "Thunderstorm";
-
-    if (isRaining) {
-      response = `Yes, carrying an umbrella is recommended because the current weather condition is ${description}.`;
-
-      recommendation = "Carry an umbrella and be prepared for wet conditions.";
-    } else {
-      response = `The current weather condition is ${description}, so rain is not currently reported.`;
-
-      recommendation =
-        "An umbrella is not currently necessary based on the available current weather data.";
-    }
-  } else if (
-
-  /* =======================================================
-     2. TEMPERATURE / HOT / COLD
-     
-     IMPORTANT:
-     This comes BEFORE "outside/outdoor".
-     
-     So:
-     "Is it too hot outside?"
-     will correctly enter this block instead of Outdoor.
-  ======================================================= */
-    q.includes("too hot") ||
-    q.includes("very hot") ||
-    q.includes("extremely hot") ||
-    q.includes("hot outside") ||
-    q.includes("hot weather") ||
-    q.includes("is it hot") ||
-    q.includes("too cold") ||
-    q.includes("very cold") ||
-    q.includes("extremely cold") ||
-    q.includes("cold outside") ||
-    q.includes("cold weather") ||
-    q.includes("is it cold") ||
-    q.includes("temperature") ||
-    q === "hot" ||
-    q === "cold"
-  ) {
-    response = `The current temperature is ${temp.toFixed(
-      1,
-    )}°C and it feels like ${feelsLike.toFixed(1)}°C.`;
-
-    /* ---------- HOT ---------- */
-
-    if (q.includes("hot") || q.includes("warm")) {
-      if (feelsLike >= 38 || temp >= 35) {
-        response += ` It feels very hot because the apparent temperature is ${feelsLike.toFixed(
-          1,
-        )}°C, with humidity at ${humidity}%.`;
-
-        recommendation =
-          "Avoid prolonged outdoor exposure, stay hydrated, and take breaks in a cool place.";
-      } else if (feelsLike >= 32 || temp >= 30) {
-        response += ` It feels warm to hot, especially because the humidity is ${humidity}%.`;
-
-        recommendation =
-          "Stay hydrated and avoid prolonged outdoor activity during the hottest part of the day.";
-      } else {
-        response +=
-          " The temperature is not particularly hot based on the current weather data.";
-
-        recommendation =
-          "Normal outdoor activity should generally be comfortable from a temperature perspective.";
-      }
-    } else if (q.includes("cold") || q.includes("cool")) {
-
-    /* ---------- COLD ---------- */
-      if (temp <= 10) {
-        response += " The current temperature indicates very cold conditions.";
-
-        recommendation =
-          "Wear warm clothing and limit prolonged exposure to the cold.";
-      } else if (temp <= 18) {
-        response +=
-          " The current temperature indicates cool to cold conditions.";
-
-        recommendation = "Consider wearing suitable warm clothing outdoors.";
-      } else {
-        response +=
-          " The current temperature does not indicate particularly cold conditions.";
-
-        recommendation =
-          "Normal clothing should generally be sufficient based on temperature.";
-      }
-    } else {
-
-    /* ---------- DIRECT TEMPERATURE QUESTION ---------- */
-      if (temp >= 35) {
-        recommendation =
-          "Very warm conditions. Avoid prolonged outdoor exposure.";
-      } else if (temp >= 30) {
-        recommendation =
-          "Warm conditions. Stay hydrated during outdoor activities.";
-      } else if (temp <= 10) {
-        recommendation = "Cold conditions. Consider wearing warm clothing.";
-      } else {
-        recommendation = "The temperature is currently moderate.";
-      }
-    }
-  } else if (
-
-  /* =======================================================
-     3. RUNNING / EXERCISE
-     
-     This comes before generic outdoor activity.
-  ======================================================= */
-    q.includes("running") ||
-    q.includes("run") ||
-    q.includes("jogging") ||
-    q.includes("jog") ||
-    q.includes("exercise") ||
-    q.includes("workout")
-  ) {
-    const reasons = [];
-
-    if (temp >= 35) {
-      reasons.push(`the temperature is high at ${temp.toFixed(1)}°C`);
-    } else if (temp >= 30) {
-      reasons.push(`the temperature is warm at ${temp.toFixed(1)}°C`);
-    }
-
-    if (feelsLike >= 35) {
-      reasons.push(`it feels like ${feelsLike.toFixed(1)}°C`);
-    }
-
-    if (humidity >= 80) {
-      reasons.push(`humidity is high at ${humidity}%`);
-    } else if (humidity >= 70) {
-      reasons.push(`humidity is ${humidity}%`);
-    }
-
-    if (wind >= 10) {
-      reasons.push(`strong wind is present at ${wind.toFixed(1)} m/s`);
-    } else if (wind >= 6) {
-      reasons.push(`wind speed is ${wind.toFixed(1)} m/s`);
-    }
-
-    if (
-      condition === "Rain" ||
-      condition === "Drizzle" ||
-      condition === "Thunderstorm"
-    ) {
-      reasons.push(`the weather condition is ${description}`);
-    }
-
-    if (visibility !== null && visibility < 5) {
-      reasons.push(`visibility is reduced to ${visibility.toFixed(1)} km`);
-    }
-
-    if (reasons.length === 0) {
-      response = `The current conditions look reasonably suitable for running. The temperature is ${temp.toFixed(
-        1,
-      )}°C with ${humidity}% humidity.`;
-
-      recommendation =
-        "A normal run should be reasonable under the current conditions.";
-    } else {
-      response = `Running may be uncomfortable because ${reasons.join(", ")}.`;
-
-      recommendation =
-        "If you run, consider reducing the duration or intensity, stay hydrated, and stop if you feel uncomfortable.";
-    }
-  } else if (
-
-  /* =======================================================
-     4. OUTDOOR ACTIVITY
-     
-     IMPORTANT:
-     Only reaches here when the question is genuinely
-     about outdoor activity.
-  ======================================================= */
-    q.includes("outdoor activity") ||
-    q.includes("outdoor") ||
-    q.includes("outside") ||
-    q.includes("go outside") ||
-    q.includes("outdoor event")
-  ) {
-    const reasons = [];
-
-    if (temp >= 35) {
-      reasons.push(`the temperature is high at ${temp.toFixed(1)}°C`);
-    } else if (temp >= 30) {
-      reasons.push(`the temperature is warm at ${temp.toFixed(1)}°C`);
-    }
-
-    if (feelsLike >= 35) {
-      reasons.push(`it feels like ${feelsLike.toFixed(1)}°C`);
-    }
-
-    if (humidity >= 70) {
-      reasons.push(`humidity is high at ${humidity}%`);
-    }
-
-    if (wind >= 6) {
-      reasons.push(`wind speed is ${wind.toFixed(1)} m/s`);
-    }
-
-    if (
-      condition === "Rain" ||
-      condition === "Drizzle" ||
-      condition === "Thunderstorm"
-    ) {
-      reasons.push(`the current condition is ${description}`);
-    }
-
-    if (reasons.length === 0) {
-      response = `Current conditions look generally suitable for outdoor activity. The weather is ${description} with a temperature of ${temp.toFixed(
-        1,
-      )}°C.`;
-
-      recommendation = "Outdoor activity is generally suitable.";
-    } else {
-      response = `Outdoor activity may require some caution because ${reasons.join(
-        ", ",
-      )}.`;
-
-      recommendation =
-        "Consider keeping the activity shorter and adjust the intensity according to the current conditions.";
-    }
-  } else if (q.includes("wind") || q.includes("windy")) {
-
-  /* =======================================================
-     5. WIND
-  ======================================================= */
-    response = `The current wind speed is ${wind.toFixed(1)} m/s.`;
-
-    if (wind >= 10) {
-      recommendation =
-        "Strong winds are present. Outdoor activities may be risky.";
-    } else if (wind >= 6) {
-      recommendation =
-        "Moderate to strong winds are present. Take some caution outdoors.";
-    } else {
-      recommendation = "Wind conditions are relatively calm.";
-    }
-  } else if (q.includes("humidity") || q.includes("humid")) {
-
-  /* =======================================================
-     6. HUMIDITY
-  ======================================================= */
-    response = `The current humidity is ${humidity}%.`;
-
-    if (humidity >= 80) {
-      recommendation =
-        "High humidity may make outdoor activities feel uncomfortable.";
-    } else if (humidity >= 60) {
-      recommendation =
-        "Humidity is moderately high and may increase discomfort in warm weather.";
-    } else {
-      recommendation = "Humidity is relatively comfortable.";
-    }
-  } else if (
-
-  /* =======================================================
-     7. VISIBILITY
-  ======================================================= */
-    q.includes("visibility") ||
-    q.includes("visible") ||
-    q.includes("fog")
-  ) {
-    if (visibility !== null) {
-      response = `Current visibility is ${visibility.toFixed(1)} km.`;
-
-      if (visibility < 2) {
-        recommendation =
-          "Poor visibility. Take extra caution while travelling.";
-      } else if (visibility < 5) {
-        recommendation =
-          "Visibility is moderate. Be cautious while travelling.";
-      } else {
-        recommendation = "Visibility is generally good.";
-      }
-    } else {
-      response =
-        "Visibility data is not available from the current weather response.";
-
-      recommendation = "No visibility-based recommendation can be made.";
-    }
+    recommendation = `You can consider ${
+      activity || "the activity"
+    } with caution. Keep the activity moderate and monitor the conditions.`;
   } else {
+    answer = `The current weather conditions are generally suitable for ${
+      activity || "this activity"
+    }.`;
 
-  /* =======================================================
-     8. GENERIC CURRENT WEATHER
-  ======================================================= */
-    response = `The current weather in ${
-      weather.name
-    } is ${description}. The temperature is ${temp.toFixed(
-      1,
-    )}°C, humidity is ${humidity}%, and wind speed is ${wind.toFixed(1)} m/s.`;
-
-    recommendation =
-      "This assessment is based on the current weather factors available from the weather API.";
+    recommendation = `Current conditions are generally suitable for ${
+      activity || "the activity"
+    }.`;
   }
 
   return {
-    response,
+    type: "what-if",
+    risk,
+    activity: activity || "Outdoor activity",
+    answer,
+    reasons,
     recommendation,
-    risk: getRiskLevel(weather),
-    weatherData: {
-      temperature: temp,
-      feelsLike,
-      humidity,
-      wind,
-      visibility,
-      condition: description,
-    },
+    factors: getWeatherFactors(weather),
+    source: "OpenWeather API",
   };
-}
+};
 
 /* =========================================================
-   VERIFY CLAIM
+   CLAIM VERIFICATION
 ========================================================= */
 
-function verifyClaim(claim, weather) {
+const verifyClaim = (claim, weather) => {
   const text = claim.toLowerCase().trim();
 
-  const condition = weather.weather[0].main.toLowerCase();
-  const description = weather.weather[0].description;
-  const temp = weather.main.temp;
-  const feelsLike = weather.main.feels_like;
-  const humidity = weather.main.humidity;
-  const wind = weather.wind.speed;
+  const condition = weather.weather?.[0]?.main?.toLowerCase() ?? "";
+  const description = weather.weather?.[0]?.description ?? condition;
 
-  /* -------------------------------------------------------
-     OFFICIAL WARNINGS
-  ------------------------------------------------------- */
+  const temp = weather.main?.temp ?? 0;
+  const humidity = weather.main?.humidity ?? 0;
+  const wind = weather.wind?.speed ?? 0;
 
+  let status = "unverified";
+  let explanation = "";
+
+  /* Official warning claims */
   if (
     text.includes("cyclone") ||
     text.includes("warning") ||
     text.includes("alert") ||
     text.includes("storm warning")
   ) {
-    return {
-      status: "unverified",
-      explanation:
-        "The current weather API data cannot verify official cyclone warnings or weather alerts.",
-      factors:
-        "An official weather warning source is required for this type of claim.",
-    };
-  }
+    status = "unverified";
+    explanation =
+      "This claim cannot be verified using the current weather data alone. Official weather warning data is required for reliable verification.";
+  } else if (
 
-  /* -------------------------------------------------------
-     RAIN
-  ------------------------------------------------------- */
-
-  if (
+  /* Rain claim */
     text.includes("rain") ||
     text.includes("raining") ||
-    text.includes("rainy")
+    text.includes("drizzle")
   ) {
-    const verified =
-      condition === "rain" ||
-      condition === "drizzle" ||
-      condition === "thunderstorm";
+    if (
+      condition.includes("rain") ||
+      condition.includes("drizzle") ||
+      condition.includes("thunderstorm")
+    ) {
+      status = "verified";
+      explanation = `The current weather condition (${description}) supports the claim.`;
+    } else {
+      status = "contradicted";
+      explanation = `The current weather condition is ${description}, so the claim is not supported by the current weather data.`;
+    }
+  } else if (text.includes("clear") || text.includes("sunny")) {
 
-    return {
-      status: verified ? "verified" : "contradicted",
-      explanation: verified
-        ? `The current weather data reports ${description}.`
-        : `The current weather data reports ${description}, not rain.`,
-      factors: `Weather condition: ${description}`,
-    };
-  }
+  /* Clear claim */
+    if (condition.includes("clear")) {
+      status = "verified";
+      explanation = "The current weather condition supports the claim.";
+    } else {
+      status = "contradicted";
+      explanation = `The current condition is ${description}.`;
+    }
+  } else if (text.includes("cloud")) {
 
-  /* -------------------------------------------------------
-     CLEAR
-  ------------------------------------------------------- */
+  /* Cloud claim */
+    if (condition.includes("cloud")) {
+      status = "verified";
+      explanation =
+        "Cloudy conditions are currently reported by the weather data.";
+    } else {
+      status = "contradicted";
+      explanation = `The current condition is ${description}.`;
+    }
+  } else if (text.includes("hot")) {
 
-  if (
-    text.includes("clear sky") ||
-    text.includes("clear weather") ||
-    text === "it is clear" ||
-    text === "clear"
-  ) {
-    const verified = condition === "clear";
-
-    return {
-      status: verified ? "verified" : "contradicted",
-      explanation: verified
-        ? "The current weather condition is Clear."
-        : `The current weather condition is ${description}.`,
-      factors: `Weather condition: ${description}`,
-    };
-  }
-
-  /* -------------------------------------------------------
-     CLOUD
-  ------------------------------------------------------- */
-
-  if (
-    text.includes("cloud") ||
-    text.includes("cloudy") ||
-    text.includes("overcast")
-  ) {
-    const verified = condition === "clouds";
-
-    return {
-      status: verified ? "verified" : "contradicted",
-      explanation: verified
-        ? "The current weather data reports cloudy conditions."
-        : `The current weather data reports ${description}.`,
-      factors: `Weather condition: ${description}`,
-    };
-  }
-
-  /* -------------------------------------------------------
-     HOT
-  ------------------------------------------------------- */
-
-  if (
-    text.includes("hot") ||
-    text.includes("very hot") ||
-    text.includes("too hot")
-  ) {
-    const verified = temp >= 30 || feelsLike >= 32;
-
-    return {
-      status: verified ? "verified" : "contradicted",
-      explanation: verified
-        ? `The temperature is ${temp.toFixed(
-            1,
-          )}°C and it feels like ${feelsLike.toFixed(
-            1,
-          )}°C, which supports the claim that it is hot.`
-        : `The temperature is ${temp.toFixed(
-            1,
-          )}°C and it feels like ${feelsLike.toFixed(
-            1,
-          )}°C, so the available data does not strongly support the claim that it is hot.`,
-      factors: `Temperature: ${temp.toFixed(
+  /* Hot claim */
+    if (temp >= 30) {
+      status = "verified";
+      explanation = `The current temperature is ${temp.toFixed(
         1,
-      )}°C | Feels like: ${feelsLike.toFixed(1)}°C`,
-    };
+      )}°C, which supports the claim that it is hot.`;
+    } else {
+      status = "contradicted";
+      explanation = `The current temperature is ${temp.toFixed(
+        1,
+      )}°C, which does not strongly support the claim.`;
+    }
+  } else if (text.includes("cold")) {
+
+  /* Cold claim */
+    if (temp <= 18) {
+      status = "verified";
+      explanation = `The current temperature is ${temp.toFixed(
+        1,
+      )}°C, which supports the claim.`;
+    } else {
+      status = "contradicted";
+      explanation = `The current temperature is ${temp.toFixed(
+        1,
+      )}°C, which does not support the claim.`;
+    }
+  } else if (text.includes("humid") || text.includes("humidity")) {
+
+  /* Humidity claim */
+    if (humidity >= 60) {
+      status = "verified";
+      explanation = `Current humidity is ${humidity}%.`;
+    } else {
+      status = "contradicted";
+      explanation = `Current humidity is ${humidity}%.`;
+    }
+  } else if (text.includes("windy") || text.includes("wind")) {
+
+  /* Wind claim */
+    if (wind >= 6) {
+      status = "verified";
+      explanation = `Current wind speed is ${wind.toFixed(1)} m/s.`;
+    } else {
+      status = "contradicted";
+      explanation = `Current wind speed is ${wind.toFixed(
+        1,
+      )} m/s, so strong wind is not currently indicated.`;
+    }
+  } else {
+    status = "unverified";
+    explanation =
+      "The current weather data does not contain enough information to verify this claim reliably.";
   }
-
-  /* -------------------------------------------------------
-     COLD
-  ------------------------------------------------------- */
-
-  if (
-    text.includes("cold") ||
-    text.includes("very cold") ||
-    text.includes("too cold")
-  ) {
-    const verified = temp <= 18;
-
-    return {
-      status: verified ? "verified" : "contradicted",
-      explanation: verified
-        ? `The temperature is ${temp.toFixed(
-            1,
-          )}°C, which supports the claim that it is cold.`
-        : `The temperature is ${temp.toFixed(
-            1,
-          )}°C, so the available data does not support the claim that it is cold.`,
-      factors: `Temperature: ${temp.toFixed(1)}°C`,
-    };
-  }
-
-  /* -------------------------------------------------------
-     HUMIDITY
-  ------------------------------------------------------- */
-
-  if (text.includes("humid") || text.includes("humidity")) {
-    const verified = humidity >= 60;
-
-    return {
-      status: verified ? "verified" : "contradicted",
-      explanation: verified
-        ? `The current humidity is ${humidity}%, which supports the claim of relatively high humidity.`
-        : `The current humidity is ${humidity}%, so the available data does not support the claim of high humidity.`,
-      factors: `Humidity: ${humidity}%`,
-    };
-  }
-
-  /* -------------------------------------------------------
-     WIND
-  ------------------------------------------------------- */
-
-  if (text.includes("wind") || text.includes("windy")) {
-    const verified = wind >= 6;
-
-    return {
-      status: verified ? "verified" : "contradicted",
-      explanation: verified
-        ? `The current wind speed is ${wind.toFixed(
-            1,
-          )} m/s, indicating noticeable wind.`
-        : `The current wind speed is ${wind.toFixed(
-            1,
-          )} m/s, so the available data does not indicate strong wind.`,
-      factors: `Wind speed: ${wind.toFixed(1)} m/s`,
-    };
-  }
-
-  /* -------------------------------------------------------
-     DEFAULT
-  ------------------------------------------------------- */
 
   return {
-    status: "unverified",
-    explanation:
-      "This claim cannot be verified reliably using the currently available weather data.",
-    factors:
-      "The current weather API does not provide enough information to verify this claim.",
+    type: "verify",
+    status,
+    explanation,
+    factors: getWeatherFactors(weather),
+    source: "OpenWeather API",
   };
-}
+};
 
 /* =========================================================
-   WEATHER FACTORS CARD
+   RISK BADGE
 ========================================================= */
 
-function WeatherCard({ data }) {
+const RiskBadge = ({ risk }) => (
+  <span className={`risk-badge ${risk}`}>Risk: {risk}</span>
+);
+
+/* =========================================================
+   FACTORS
+========================================================= */
+
+const WeatherFactors = ({ factors }) => (
+  <div className="weather-card">
+    <h4>Weather Factors Used</h4>
+
+    <div className="weather-factors">
+      {factors.map((factor) => (
+        <div key={factor.label}>
+          <span>{factor.label}</span>
+          <strong>{factor.value}</strong>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/* =========================================================
+   CHAT DASHBOARD
+========================================================= */
+
+const ChatDashboard = ({ onAsk }) => {
+  const questions = [
+    "Is it good for outdoor activity?",
+    "Should I carry an umbrella?",
+    "What if I go for a run now?",
+    "Is it too hot outside?",
+  ];
+
   return (
-    <div className="weather-card">
-      <h4>Weather Factors Used</h4>
+    <div className="weather-dashboard chat-dashboard">
+      <div className="dashboard-title">
+        <h3>Ask WeatherGPT</h3>
+        <p>
+          Ask questions about the current weather and get explainable
+          recommendations.
+        </p>
+      </div>
 
-      <div className="weather-factors">
-        <div>
-          <span>Temperature</span>
-          <strong>{data.temperature.toFixed(1)}°C</strong>
-        </div>
-
-        <div>
-          <span>Feels Like</span>
-          <strong>{data.feelsLike.toFixed(1)}°C</strong>
-        </div>
-
-        <div>
-          <span>Humidity</span>
-          <strong>{data.humidity}%</strong>
-        </div>
-
-        <div>
-          <span>Wind</span>
-          <strong>{data.wind.toFixed(1)} m/s</strong>
-        </div>
-
-        <div>
-          <span>Condition</span>
-          <strong>{data.condition}</strong>
-        </div>
-
-        {data.visibility !== null && (
-          <div>
-            <span>Visibility</span>
-            <strong>{data.visibility.toFixed(1)} km</strong>
-          </div>
-        )}
+      <div className="dashboard-quick-questions">
+        {questions.map((question) => (
+          <button key={question} onClick={() => onAsk(question)}>
+            {question}
+          </button>
+        ))}
       </div>
     </div>
   );
-}
+};
 
 /* =========================================================
-   WEATHER CHAT COMPONENT
+   WHAT-IF DASHBOARD
 ========================================================= */
 
-export default function WeatherChat({ weather }) {
-  const [activeTab, setActiveTab] = useState("chat");
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
+const WhatIfDashboard = ({ onAnalyze }) => {
+  const [activity, setActivity] = useState("");
 
-  /* =======================================================
-     SEND MESSAGE
-  ======================================================= */
+  const handleAnalyze = () => {
+    if (!activity.trim()) return;
 
-  const sendMessage = () => {
-    if (!input.trim() || !weather) return;
-
-    const question = input.trim();
-
-    const userMessage = {
-      type: "user",
-      text: question,
-    };
-
-    let botMessage;
-
-    /* ---------- VERIFY TAB ---------- */
-
-    if (activeTab === "verify") {
-      const result = verifyClaim(question, weather);
-
-      botMessage = {
-        type: "bot",
-        verify: result,
-      };
-    } else if (activeTab === "what-if") {
-
-    /* ---------- WHAT-IF TAB ---------- */
-      const result = analyzeWhatIf(weather);
-
-      botMessage = {
-        type: "bot",
-        whatIf: result,
-        question,
-      };
-    } else {
-
-    /* ---------- CHAT TAB ---------- */
-      const result = analyzeQuestion(question, weather);
-
-      botMessage = {
-        type: "bot",
-        ...result,
-      };
-    }
-
-    setMessages((prev) => [...prev, userMessage, botMessage]);
-
-    setInput("");
+    onAnalyze(activity);
+    setActivity("");
   };
-
-  /* =======================================================
-     QUICK QUESTION
-  ======================================================= */
-
-  const handleQuickQuestion = (question) => {
-    setInput(question);
-  };
-
-  /* =======================================================
-     UI
-  ======================================================= */
 
   return (
-    <div className="weather-gpt-shell">
-      <div className="chat-header">
-        <h2>WeatherGPT</h2>
-        <p>Explainable AI for Weather Intelligence</p>
+    <div className="weather-dashboard what-if-dashboard">
+      <div className="dashboard-title">
+        <h3>What-If Weather Analysis</h3>
+        <p>Check how the current weather may affect an activity.</p>
       </div>
 
-      {/* ================= TABS ================= */}
+      <div className="dashboard-form">
+        <label>What activity are you planning?</label>
 
-      <div className="tab-nav">
+        <input
+          value={activity}
+          onChange={(e) => setActivity(e.target.value)}
+          placeholder="Example: outdoor event, running, travelling"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAnalyze();
+            }
+          }}
+        />
+
+        <div className="current-condition-info">
+          <span>Analysis based on</span>
+          <strong>Current weather conditions</strong>
+        </div>
+
         <button
-          className={activeTab === "chat" ? "tab-btn active" : "tab-btn"}
-          onClick={() => setActiveTab("chat")}
+          className="dashboard-action-btn"
+          onClick={handleAnalyze}
+          disabled={!activity.trim()}
         >
-          Chat
+          Analyze Scenario
         </button>
+      </div>
+    </div>
+  );
+};
+
+/* =========================================================
+   VERIFY CLAIM DASHBOARD
+========================================================= */
+
+const VerifyDashboard = ({ onVerify }) => {
+  const [claim, setClaim] = useState("");
+
+  const handleVerify = () => {
+    if (!claim.trim()) return;
+
+    onVerify(claim);
+    setClaim("");
+  };
+
+  return (
+    <div className="weather-dashboard verify-dashboard">
+      <div className="dashboard-title">
+        <h3>Verify Weather Claim</h3>
+        <p>
+          Check whether a weather-related claim matches the available current
+          weather data.
+        </p>
+      </div>
+
+      <div className="dashboard-form">
+        <label>Enter a weather claim</label>
+
+        <input
+          value={claim}
+          onChange={(e) => setClaim(e.target.value)}
+          placeholder="Example: It is raining now"
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleVerify();
+            }
+          }}
+        />
 
         <button
-          className={activeTab === "what-if" ? "tab-btn active" : "tab-btn"}
-          onClick={() => setActiveTab("what-if")}
-        >
-          What-If
-        </button>
-
-        <button
-          className={activeTab === "verify" ? "tab-btn active" : "tab-btn"}
-          onClick={() => setActiveTab("verify")}
+          className="dashboard-action-btn"
+          onClick={handleVerify}
+          disabled={!claim.trim()}
         >
           Verify Claim
         </button>
       </div>
 
-      {/* ================= MESSAGES ================= */}
-
-      <div className="message-list">
-        {messages.length === 0 && (
-          <div className="empty-state">
-            <h3>Ask WeatherGPT</h3>
-
-            <p>
-              Ask questions about the current weather and get explainable
-              recommendations.
-            </p>
-
-            <div className="quick-questions">
-              <button
-                onClick={() =>
-                  handleQuickQuestion("Is it good for outdoor activity?")
-                }
-              >
-                Is it good for outdoor activity?
-              </button>
-
-              <button
-                onClick={() =>
-                  handleQuickQuestion("Should I carry an umbrella?")
-                }
-              >
-                Should I carry an umbrella?
-              </button>
-
-              <button
-                onClick={() =>
-                  handleQuickQuestion("What if I go for a run now?")
-                }
-              >
-                What if I go for a run now?
-              </button>
-
-              <button
-                onClick={() => handleQuickQuestion("Is it too hot outside?")}
-              >
-                Is it too hot outside?
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ================= MESSAGE RENDER ================= */}
-
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`message ${
-              message.type === "user" ? "user-message" : "bot-message"
-            }`}
-          >
-            {/* USER */}
-
-            {message.type === "user" ? (
-              <div className="user-bubble">{message.text}</div>
-            ) : message.verify ? (
-              /* ================= VERIFY ================= */
-
-              <div className="bot-bubble">
-                <div className={`verification-badge ${message.verify.status}`}>
-                  {message.verify.status.toUpperCase()}
-                </div>
-
-                <p>{message.verify.explanation}</p>
-
-                <p className="verification-factors">
-                  <strong>Reason:</strong> {message.verify.factors}
-                </p>
-
-                <div className="sources">
-                  <strong>Source:</strong> OpenWeather API
-                </div>
-              </div>
-            ) : message.whatIf ? (
-              /* ================= WHAT-IF ================= */
-
-              <div className="bot-bubble">
-                <div className="what-if-result">
-                  <h4>What-If Analysis</h4>
-
-                  <p>
-                    <strong>Scenario:</strong> {message.question}
-                  </p>
-
-                  <div className="what-if-grid">
-                    <div className="option-a">
-                      <h5>Option A — Do It Now</h5>
-
-                      <div
-                        className={`risk-badge ${message.whatIf.risk.toLowerCase()}`}
-                      >
-                        Risk: {message.whatIf.risk}
-                      </div>
-
-                      <p>
-                        Based on the current weather conditions, this activity
-                        has a {message.whatIf.risk.toLowerCase()} risk level.
-                      </p>
-
-                      {message.whatIf.reasons.length > 0 && (
-                        <ul>
-                          {message.whatIf.reasons.map((reason, reasonIndex) => (
-                            <li key={reasonIndex}>{reason}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-
-                    <div className="option-b">
-                      <h5>Option B — Wait</h5>
-
-                      <div className="risk-badge low">Risk: Low</div>
-
-                      <p>
-                        Waiting for more suitable weather conditions can reduce
-                        weather-related discomfort and risk.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="recommendation-box">
-                    <strong>Recommendation</strong>
-
-                    <p>{message.whatIf.recommendation}</p>
-                  </div>
-
-                  <div className="sources">
-                    <strong>Source:</strong> OpenWeather API
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* ================= CHAT ================= */
-
-              <div className="bot-bubble">
-                <div className={`risk-badge ${message.risk.toLowerCase()}`}>
-                  Risk: {message.risk}
-                </div>
-
-                <p>{message.response}</p>
-
-                <WeatherCard data={message.weatherData} />
-
-                <div className="recommendation-box">
-                  <strong>Recommendation</strong>
-
-                  <p>{message.recommendation}</p>
-                </div>
-
-                <div className="sources">
-                  <strong>Source:</strong> OpenWeather API
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* ================= INPUT ================= */}
-
-      <div className="chat-input">
-        <input
-          type="text"
-          value={input}
-          placeholder={
-            activeTab === "verify"
-              ? "Enter a weather claim to verify..."
-              : activeTab === "what-if"
-                ? "Ask a what-if weather question..."
-                : "Ask WeatherGPT about the current weather..."
-          }
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              sendMessage();
-            }
-          }}
-        />
-
-        <button className="send-btn" onClick={sendMessage}>
-          Send
-        </button>
+      <div className="verification-note">
+        <strong>Note:</strong> Official cyclone and warning claims require
+        official warning data and may currently be shown as unverified.
       </div>
     </div>
   );
-}
+};
+
+/* =========================================================
+   RESULT DASHBOARD
+========================================================= */
+
+const ResultDashboard = ({ result }) => {
+  if (!result) return null;
+
+  /* Chat / What-If */
+  if (result.type === "chat" || result.type === "what-if") {
+    return (
+      <div className="weather-result-dashboard">
+        <RiskBadge risk={result.risk} />
+
+        {result.type === "what-if" && (
+          <h4 className="scenario-heading">Scenario: {result.activity}</h4>
+        )}
+
+        <p className="result-answer">{result.answer}</p>
+
+        {result.type === "what-if" && (
+          <div className="what-if-reasons">
+            <h4>Why?</h4>
+
+            <ul>
+              {result.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <WeatherFactors factors={result.factors} />
+
+        <div className="recommendation-box">
+          <strong>Recommendation</strong>
+          <p>{result.recommendation}</p>
+        </div>
+
+        <div className="sources">Source: {result.source}</div>
+      </div>
+    );
+  }
+
+  /* Verify Claim */
+  if (result.type === "verify") {
+    return (
+      <div className="weather-result-dashboard">
+        <div className={`verification-badge ${result.status}`}>
+          {result.status === "verified" && "VERIFIED"}
+          {result.status === "contradicted" && "CONTRADICTED"}
+          {result.status === "unverified" && "UNVERIFIED"}
+        </div>
+
+        <p className="result-answer">{result.explanation}</p>
+
+        <WeatherFactors factors={result.factors} />
+
+        <div className="sources">Source: {result.source}</div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
+/* =========================================================
+   MAIN WEATHER CHAT
+========================================================= */
+
+const WeatherChat = ({ weather }) => {
+  const [activeTab, setActiveTab] = useState("chat");
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+
+  const handleChat = (question) => {
+    if (!question.trim()) return;
+
+    const result = analyzeQuestion(question, weather);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        question,
+        result,
+      },
+    ]);
+
+    setInput("");
+  };
+
+  const handleWhatIf = (activity) => {
+    if (!activity.trim()) return;
+
+    const result = analyzeWhatIf(activity, weather);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        question: `What if I do ${activity}?`,
+        result,
+      },
+    ]);
+  };
+
+  const handleVerify = (claim) => {
+    if (!claim.trim()) return;
+
+    const result = verifyClaim(claim, weather);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        question: claim,
+        result,
+      },
+    ]);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!input.trim()) return;
+
+    handleChat(input);
+  };
+
+  const clearDashboard = (tab) => {
+    setActiveTab(tab);
+    setMessages([]);
+    setInput("");
+  };
+
+  return (
+    <div className="weather-gpt-shell">
+      {/* Header */}
+      <div className="chat-header">
+        <h2>WeatherGPT</h2>
+        <p>Explainable AI for Weather Intelligence</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="tab-nav">
+        <button
+          className={`tab-btn ${activeTab === "chat" ? "active" : ""}`}
+          onClick={() => clearDashboard("chat")}
+        >
+          Chat
+        </button>
+
+        <button
+          className={`tab-btn ${activeTab === "what-if" ? "active" : ""}`}
+          onClick={() => clearDashboard("what-if")}
+        >
+          What-If
+        </button>
+
+        <button
+          className={`tab-btn ${activeTab === "verify" ? "active" : ""}`}
+          onClick={() => clearDashboard("verify")}
+        >
+          Verify Claim
+        </button>
+      </div>
+
+      {/* ===================================================
+          ACTIVE DASHBOARD
+      =================================================== */}
+
+      {activeTab === "chat" && <ChatDashboard onAsk={handleChat} />}
+
+      {activeTab === "what-if" && <WhatIfDashboard onAnalyze={handleWhatIf} />}
+
+      {activeTab === "verify" && <VerifyDashboard onVerify={handleVerify} />}
+
+      {/* ===================================================
+          RESULTS
+      =================================================== */}
+
+      {messages.length > 0 && (
+        <div className="dashboard-results">
+          {messages.map((message) => (
+            <div className="dashboard-conversation" key={message.id}>
+              <div className="dashboard-user-question">{message.question}</div>
+
+              <ResultDashboard result={message.result} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ===================================================
+          CHAT INPUT ONLY
+      =================================================== */}
+
+      {activeTab === "chat" && (
+        <form className="chat-input" onSubmit={handleSubmit}>
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask WeatherGPT about the current weather..."
+          />
+
+          <button className="send-btn" type="submit">
+            Send
+          </button>
+        </form>
+      )}
+    </div>
+  );
+};
+
+export default WeatherChat;

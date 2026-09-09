@@ -411,3 +411,300 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   INDIVIDUAL WEATHERGPT DASHBOARDS
+   Layout only - existing colors are preserved
+========================================================= */
+
+.weather-dashboard {
+  width: 100%;
+  margin-top: 4px;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-sizing: border-box;
+}
+
+/* Dashboard heading */
+
+.dashboard-title {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.dashboard-title h3 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 700;
+  color: white;
+}
+
+.dashboard-title p {
+  margin: 0 auto;
+  max-width: 600px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* =========================================================
+   CHAT DASHBOARD
+========================================================= */
+
+.chat-dashboard {
+  min-height: 230px;
+}
+
+.dashboard-quick-questions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  max-width: 700px;
+  margin: 20px auto 0;
+}
+
+.dashboard-quick-questions button {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: 0.2s ease;
+}
+
+.dashboard-quick-questions button:hover {
+  background: rgba(124, 58, 237, 0.55);
+}
+
+/* =========================================================
+   WHAT-IF / VERIFY FORM
+========================================================= */
+
+.dashboard-form {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.dashboard-form label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+}
+
+.dashboard-form input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-size: 13px;
+}
+
+.dashboard-form input::placeholder {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.dashboard-form input:focus {
+  border-color: rgba(167, 139, 250, 0.9);
+}
+
+/* Current weather information */
+
+.current-condition-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.current-condition-info span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.current-condition-info strong {
+  font-size: 12px;
+  color: white;
+}
+
+/* Dashboard action button
+   Uses the existing send-button color */
+
+.dashboard-action-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: white;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.dashboard-action-btn:hover {
+  background: #6d28d9;
+}
+
+.dashboard-action-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   VERIFY NOTE
+========================================================= */
+
+.verification-note {
+  max-width: 700px;
+  margin: 14px auto 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.verification-note strong {
+  color: white;
+}
+
+/* =========================================================
+   RESULTS
+========================================================= */
+
+.dashboard-results {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.dashboard-conversation {
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.dashboard-user-question {
+  display: block;
+  width: fit-content;
+  max-width: 80%;
+  margin-left: auto;
+  margin-bottom: 10px;
+  padding: 10px 13px;
+  border-radius: 14px 14px 4px 14px;
+  background: rgba(124, 58, 237, 0.9);
+  color: white;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.weather-result-dashboard {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 15px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: white;
+}
+
+.result-answer {
+  margin: 8px 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: white;
+}
+
+.scenario-heading {
+  margin: 8px 0;
+  font-size: 15px;
+  color: white;
+}
+
+/* =========================================================
+   WHAT-IF REASONS
+========================================================= */
+
+.what-if-reasons {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.what-if-reasons h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: white;
+}
+
+.what-if-reasons ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.what-if-reasons li {
+  margin-bottom: 5px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+  .weather-dashboard {
+    padding: 15px;
+  }
+
+  .dashboard-title h3 {
+    font-size: 18px;
+  }
+
+  .dashboard-title p {
+    font-size: 12px;
+  }
+
+  .dashboard-quick-questions {
+    grid-template-columns: 1fr;
+  }
+
+  .current-condition-info {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dashboard-user-question {
+    max-width: 90%;
+  }
+
+  .weather-result-dashboard {
+    padding: 13px;
+  }
+}
